@@ -1,0 +1,12 @@
+**
+!package.json
+!package-lock.json
+!index.html
+!src/
+!src/**
+!migrations/
+!migrations/**
+!samples/
+!samples/*.csv
+!scripts/
+!scripts/build.mjs

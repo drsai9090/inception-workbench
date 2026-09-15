@@ -1,0 +1,72 @@
+name: Verify synthetic workbench
+on:
+  pull_request:
+  push:
+    branches: [main, codex/inception-workbench]
+permissions:
+  contents: read
+concurrency:
+  group: verify-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:18-bookworm
+        env:
+          POSTGRES_USER: inception
+          POSTGRES_PASSWORD: ci-synthetic-only
+          POSTGRES_DB: inception_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U inception -d inception_test"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    env:
+      TEST_DATABASE_URL: postgres://inception:ci-synthetic-only@127.0.0.1:5432/inception_test
+      DATABASE_URL: postgres://inception:ci-synthetic-only@127.0.0.1:5432/inception_test
+      REVIEWER_TOKEN: ci-only-reviewer-00000000000000000000000000000001
+      VIEWER_TOKEN: ci-only-viewer-0000000000000000000000000000000002
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - run: npm test
+      - run: npm run test:integration
+      - run: npm run build
+      - name: Build runtime image
+        run: docker build --tag inception-ci .
+      - name: Migrate disposable database using runtime image
+        run: docker run --rm --network host --env DATABASE_URL inception-ci npm run migrate
+      - name: Verify container readiness and access boundary
+        run: |
+          docker run --detach --name inception-ci --network host \
+            --env DATABASE_URL --env REVIEWER_TOKEN --env VIEWER_TOKEN \
+            --env PUBLIC_ORIGIN=http://127.0.0.1:4318 inception-ci
+          curl --fail --retry 20 --retry-delay 1 --retry-all-errors http://127.0.0.1:4318/healthz
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          const base = 'http://127.0.0.1:4318';
+          const health = await fetch(`${base}/healthz`);
+          assert.equal(health.status, 200);
+          assert.deepEqual(await health.json(), { status: 'ok', mode: 'synthetic' });
+          assert.equal((await fetch(`${base}/`)).status, 200);
+          assert.equal((await fetch(`${base}/api/workbench`)).status, 401);
+          const viewerHeaders = { Authorization: `Bearer ${process.env.VIEWER_TOKEN}` };
+          assert.equal((await fetch(`${base}/api/workbench`, { headers: viewerHeaders })).status, 200);
+          assert.equal((await fetch(`${base}/api/imports`, { method: 'POST', headers: viewerHeaders })).status, 403);
+          JS
+      - name: Container diagnostics
+        if: failure()
+        run: docker logs inception-ci 2>/dev/null || true
+      - name: Remove disposable container
+        if: always()
+        run: docker rm --force inception-ci 2>/dev/null || true
