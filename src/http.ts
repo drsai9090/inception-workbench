@@ -4,7 +4,7 @@ import { createHash, timingSafeEqual } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { AppError } from './shared.ts';
-import type { Actor, ApprovalInput, ImportInput } from './shared.ts';
+import type { Actor } from './shared.ts';
 import type { createStore } from './store.ts';
 
 export interface HttpOptions {
@@ -95,8 +95,7 @@ export function createApp(options: HttpOptions) {
             if (!filename || /[\x00-\x1f\x7f]/.test(filename)) fail(400, 'INVALID_FILENAME', 'Provide a filename without control characters.');
             if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{7,99}$/.test(idempotencyKey)) fail(400, 'INVALID_KEY', 'Import key must be 8–100 letters, numbers, dots, colons, underscores or hyphens.');
             if (Buffer.byteLength(csv, 'utf8') > 262144) fail(413, 'CSV_LIMIT', 'CSV files must be at most 256 KiB.');
-            const input: ImportInput = { kind, filename, csv, idempotencyKey };
-            const result = await store.importCsv(input, currentActor);
+            const result = await store.importCsv({ kind, filename, csv, idempotencyKey }, currentActor);
             return json(res, result.replayed ? 200 : 201, result);
           }
           onlyFields(data, ['invoiceId', 'paymentId', 'note']);
@@ -104,8 +103,7 @@ export function createApp(options: HttpOptions) {
           const paymentId = textField(data, 'paymentId', 36);
           const note = textField(data, 'note', 500).trim();
           if (!uuid.test(invoiceId) || !uuid.test(paymentId)) fail(400, 'INVALID_ID', 'Choose a valid invoice and payment.');
-          const input: ApprovalInput = { invoiceId, paymentId, note };
-          return json(res, 200, await store.approve(input, currentActor));
+          return json(res, 200, await store.approve({ invoiceId, paymentId, note }, currentActor));
         }
         fail(404, 'NOT_FOUND', 'Endpoint not found.');
       }

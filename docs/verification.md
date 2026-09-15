@@ -6,7 +6,7 @@ Local verification on 15 September 2026: Windows, Node.js **24.19.0**, PostgreSQ
 
 - TypeScript check and production client build passed.
 - **12 unit/HTTP tests passed**: decimal precision, CSV validation and quoting, Unicode, byte-preserving UTF-8 upload, role/origin/input guards and readiness.
-- **14 real PostgreSQL integration tests passed**: duplicate and simultaneous imports, conflicting keys/content, quarantine, source conflicts, permissions at service/API boundaries, atomic rollback, competing approvals, reconnect replay, and abrupt application-process restart/replay.
+- **13 real PostgreSQL integration tests passed**: duplicate and simultaneous imports, conflicting keys/content, quarantine, source conflicts, permissions at service/API boundaries, atomic rollback, competing approvals, and abrupt application-process restart/replay. The reconnect-only test was removed because the process-restart test covers the same replay assertions.
 - The restart check kills a server process after committed imports and approval, starts a new process, then resubmits the same operations through HTTP. It proves persistence and safe replay after application termination; it does not simulate database crash during COMMIT or disk loss.
 - A PostgreSQL trigger intentionally rejects audit inserts in failure tests. Both source/import writes and approval writes roll back, then succeed after the injected failure is removed.
 - `scripts/local-db.ps1` recognises the isolated local cluster. The cluster was successfully initialised and started with PostgreSQL tools; the helper's stop/start path was not exercised. Setup generates random local secrets and refuses existing `.env` files.

@@ -213,23 +213,3 @@ test('disputed canonical source data requires review and records conflict eviden
   assert.equal(conflicts[0]!.importId, conflicting.batch.id);
   assert.equal(conflicts[0]!.normalized.amountMinor, '12100');
 });
-
-test('fresh connection after a lost response replays persisted imports and approvals', async () => {
-  const request = input('invoice', invoiceCsv);
-  const imported = await store.importCsv(request, actor);
-  await store.importCsv(input('payment', paymentCsv), actor);
-  const entries = (await store.snapshot()).entries;
-  const approval = { invoiceId: entries.find(e => e.kind === 'invoice')!.id, paymentId: entries.find(e => e.kind === 'payment')!.id, note: 'Reviewed before reconnect.' };
-  const approved = await store.approve(approval, actor);
-  const freshPool = new pg.Pool({ connectionString: testUrl.toString() });
-  try {
-    const fresh = createStore(freshPool);
-    const replayed = await fresh.importCsv(request, actor);
-    assert.equal(replayed.replayed, true);
-    assert.equal(replayed.batch.id, imported.batch.id);
-    assert.deepEqual(await fresh.approve(approval, actor), approved);
-    assert.equal((await fresh.snapshot()).audit.length, 3);
-  } finally {
-    await freshPool.end();
-  }
-});

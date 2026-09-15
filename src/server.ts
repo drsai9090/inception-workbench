@@ -16,7 +16,7 @@ const server = createApp({
   ready: async () => { await pool.query('SELECT 1 FROM import_batches LIMIT 0'); },
 });
 server.listen(port, host, () => console.log(`Inception synthetic sandbox: http://${host}:${port} (${localDemo ? 'local reviewer access' : 'access keys required'})`));
-async function shutdown() {
+function shutdown() {
   server.close(async () => { await pool.end(); process.exit(0); });
   setTimeout(() => process.exit(1), 10_000).unref();
 }

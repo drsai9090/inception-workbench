@@ -77,7 +77,7 @@ export function createStore(pool: pg.Pool) {
 
     async snapshot(): Promise<Workbench> {
       return transaction(pool, async client => {
-        const imports = await client.query('SELECT * FROM import_batches ORDER BY created_at DESC, id');
+        const imports = await client.query('SELECT id, kind, filename, idempotency_key, counts, created_at FROM import_batches ORDER BY created_at DESC, id');
         const entries = await client.query("SELECT e.*, ARRAY(SELECT s.id FROM source_rows s WHERE s.entry_id = e.id AND s.disposition = 'conflict' ORDER BY s.id) AS conflict_source_row_ids FROM entries e ORDER BY kind, external_id");
         const resolutions = await client.query('SELECT * FROM resolutions ORDER BY created_at DESC, id');
         const audit = await client.query('SELECT * FROM audit_events ORDER BY created_at DESC, id');

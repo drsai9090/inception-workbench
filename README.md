@@ -1,8 +1,8 @@
 # Inception · Reconciliation workbench
 
-A small, independent portfolio application for reviewing **synthetic invoice and payment CSVs**. Import the original files, inspect validation and duplicate decisions, approve a whole-payment match, and follow the decision back to its source rows.
+Import synthetic invoice and payment CSVs, review exceptions, and approve matches with an audit trail.
 
-TypeScript · React · Node.js 24 · PostgreSQL 18. One application, one database, no model calls or financial integrations. This is a synthetic sandbox, not a production accounting system.
+TypeScript · React · Node.js 24 · PostgreSQL 18. Synthetic data only; no banking connections or money movement.
 
 ## Run locally
 
@@ -50,7 +50,7 @@ Open [the local workbench](http://127.0.0.1:4318) and choose **Open local sandbo
 5. Inspect the conflicting `PAYMENT-002` source row: a later row says €481.00 while the retained first entry says €480.00. Choose `INV-1002`, then enter a note explaining the reference typo and why the synthetic example uses the retained €480.00. Approve.
 6. Expect **€1,730.00 approved**, two approved matches and four audit events. The **€75.00** partial payment remains unresolved against a €200.00 invoice. Open **Audit history** for reviewer role, time, before/after state and source-conflict evidence.
 
-These are synthetic decisions. The application does not send communications, connect to banks, move money or handle real client data. Reloading disconnects the browser; reopening the sandbox retains committed database records. Replaying the samples on an already-used sandbox does not reset approvals.
+Reloading disconnects the browser; reopening retains committed records. Replaying the samples does not reset approvals.
 
 ## Access model
 
@@ -124,12 +124,12 @@ npm run build
 
 Integration tests require `TEST_DATABASE_URL`, fail if missing, and refuse a database whose name does not end in `_test`. Each suite creates and drops only its own randomly named schema. Tests execute real PostgreSQL transactions and constraints. The HTTP boundary unit test uses a labelled store stub only for role/header/input checks.
 
-Coverage includes exact money and malformed amounts, byte-preserving UTF-8 uploads, input/role/origin guards, simultaneous import deliveries, inconsistent idempotency keys, source conflicts, concurrent competing approvals, injected audit failures rolling back imports and approvals, reconnect replay, and an actual abruptly terminated/restarted application process replaying committed HTTP operations. Database crash during COMMIT, disk loss, network partitions and production load are not simulated.
+Coverage includes exact money and malformed amounts, byte-preserving UTF-8 uploads, input/role/origin guards, simultaneous import deliveries, inconsistent idempotency keys, source conflicts, concurrent competing approvals, injected audit failures rolling back imports and approvals, and an abruptly terminated/restarted application process replaying committed HTTP operations. Database crash during COMMIT, disk loss, network partitions and production load are not simulated.
 
 See [verification record](docs/verification.md) for observed local checks and the distinction from hosted CI. CI runs the same checks with PostgreSQL and a container smoke check. Deployment instructions are in [deploy/README.md](deploy/README.md); no Azure resources have been provisioned.
 
 ## Scope limits
 
-This first slice has fixed CSV columns, one currency, one shared sandbox, shared role keys, bounded synchronous imports and no pagination or rate limiting. It is intended for a small controlled synthetic demonstration, not unattended public uploads. No throughput, scale, customer adoption or production operation is claimed. No employer source, data, prompts or branding are included.
+Fixed CSV columns, EUR only, one shared sandbox and shared role keys. Imports are synchronous; pagination and rate limiting are not implemented. Use for controlled synthetic demonstrations only.
 
 Implementation references: [node-postgres transactions](https://node-postgres.com/features/transactions), [CSV parser options](https://csv.js.org/parse/options/), [Azure Container Apps ingress](https://learn.microsoft.com/en-us/azure/container-apps/ingress-how-to).
